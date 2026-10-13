@@ -1,0 +1,17 @@
+IF OBJECT_ID('dbo.FactLoan','U') IS NOT NULL
+    DROP TABLE dbo.FactLoan;
+GO
+
+CREATE TABLE dbo.FactLoan(
+    LoanID VARCHAR(50) NULL,
+    CustomerID VARCHAR(50) NULL,
+    LoanAmount DOUBLE PRECISION NULL,
+    EMI DOUBLE PRECISION NULL,
+    PendingEMIs INT NULL,
+    DefaultStatus VARCHAR(10) NULL,
+    IngestionDate VARCHAR(20) NULL
+)
+WITH(
+    DISTRIBUTION = HASH(CustomerID),
+    CLUSTERED COLUMNSTORE INDEX
+)
