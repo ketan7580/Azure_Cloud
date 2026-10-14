@@ -1,0 +1,84 @@
+{
+	"name": "dataflow transfrom CSV",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "dataflow_source",
+						"type": "DatasetReference"
+					},
+					"name": "sourceCsv"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SinkDataflow",
+						"type": "DatasetReference"
+					},
+					"name": "sink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "selectCols"
+				},
+				{
+					"name": "filterRows"
+				},
+				{
+					"name": "splitActive"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "aggregate1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          Account_Number as string,",
+				"          Customer_ID as string,",
+				"          Account_Type as string,",
+				"          Current_Balance as double,",
+				"          Status as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> sourceCsv",
+				"sourceCsv select(mapColumn(",
+				"          Account_Number,",
+				"          Customer_ID,",
+				"          Current_Balance,",
+				"          Status",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> selectCols",
+				"selectCols filter(Status != 'Null') ~> filterRows",
+				"filterRows split(Status=='Active',",
+				"     Status == 'Blocked',",
+				"     disjoint: false) ~> splitActive@(Active, Blocked, other)",
+				"splitActive@other derive(Current_Balance = iif(isNull(Current_Balance), 'N/A',toString(Current_Balance))) ~> derivedColumn1",
+				"splitActive@Active aggregate(groupBy(Status),",
+				"     Account_Number = max(Account_Number)) ~> aggregate1",
+				"aggregate1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Account_Number as string,",
+				"          Customer_ID as string,",
+				"          Account_Type as string,",
+				"          Current_Balance as string,",
+				"          Status as string",
+				"     ),",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> sink"
+			]
+		}
+	}
+}
