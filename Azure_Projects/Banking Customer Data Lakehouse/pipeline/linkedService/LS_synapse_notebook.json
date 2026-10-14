@@ -1,0 +1,13 @@
+{
+	"name": "LS_synapse_notebook",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSynapseArtifacts",
+		"typeProperties": {
+			"endpoint": "https://synapse-workspace-dev-01.dev.azuresynapse.net",
+			"authentication": "MSI",
+			"workspaceResourceId": "/subscriptions/beb9d48a-12d7-485a-aaf6-15368b0cfc1b/resourceGroups/rg-banking-retail-dev/providers/Microsoft.Synapse/workspaces/synapse-workspace-dev-01"
+		}
+	}
+}
