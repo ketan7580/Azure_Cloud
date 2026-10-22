@@ -1,0 +1,229 @@
+{
+	"name": "pl_ingest_landing_to_bronze",
+	"properties": {
+		"activities": [
+			{
+				"name": "LKP_Read_config",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "ds_json_config",
+						"type": "DatasetReference",
+						"parameters": {
+							"p_container_name": "landing",
+							"p_folder_name": "config",
+							"p_file_name": "pipeline_config.json"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LKP_Read_config",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LKP_Read_config').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copy_Landing_To_Bronze",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_adls_landing_dynamic",
+									"type": "DatasetReference",
+									"parameters": {
+										"p_container_name": {
+											"value": "@item().SourceContainer",
+											"type": "Expression"
+										},
+										"p_folder_name": "@null",
+										"p_file_name": {
+											"value": "@item().SourceFileName",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_adls_bronze_dynamic",
+									"type": "DatasetReference",
+									"parameters": {
+										"p_container_name": {
+											"value": "@item().TargetContainer",
+											"type": "Expression"
+										},
+										"p_folder_name": {
+											"value": "@item().TargetFolderName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Copy data to Dedicated SQL Pool",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Copy_Landing_To_Bronze",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"wildcardFolderPath": {
+											"value": "@item().SourceFolderName",
+											"type": "Expression"
+										},
+										"wildcardFileName": "*.parquet",
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "ParquetReadSettings"
+									}
+								},
+								"sink": {
+									"type": "SqlDWSink",
+									"preCopyScript": {
+										"value": "TRUNCATE TABLE dbo.@{item().TargetTableName}",
+										"type": "Expression"
+									},
+									"writeBehavior": "Insert",
+									"sqlWriterUseTableLock": false,
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_adls_silver_parquet",
+									"type": "DatasetReference",
+									"parameters": {
+										"p_container_name": "silver",
+										"p_folder_name": {
+											"value": "@item().SourceFolderName",
+											"type": "Expression"
+										},
+										"p_file_name": "*.parquet"
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_sqlpool_gold_dynamic",
+									"type": "DatasetReference",
+									"parameters": {
+										"p_table_name": {
+											"value": "@item().TargetTableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2026-09-23T09:35:39Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
