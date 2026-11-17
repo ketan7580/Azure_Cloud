@@ -1,0 +1,12 @@
+{
+	"name": "LS_synapse_nb",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSynapseArtifacts",
+		"typeProperties": {
+			"endpoint": "https://synapse-workspace-dev-02.dev.azuresynapse.net",
+			"authentication": "MSI",
+			"workspaceResourceId": "/subscriptions/d08b491b-127c-4f35-a4fc-f7a1528b04bf/resourceGroups/rg_ketan_project/providers/Microsoft.Synapse/workspaces/synapse-workspace-dev-02"
+		}
+	}
+}
